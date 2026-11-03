@@ -1,115 +1,53 @@
+import os
 from datetime import datetime
+from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, conlist
 
-from pydantic import BaseModel, Field
-
+BATCH_MAX_ITEMS = int(os.getenv("BATCH_MAX_ITEMS", "50"))
 
 class OrderCreate(BaseModel):
-    """Request schema for creating a new order."""
-
-    client_name: str = Field(
-        min_length=2,
-        max_length=120,
-        description="Client name.",
-    )
-
-    gr_liv_area: float = Field(
-        gt=0,
-        le=10_000,
-        description="Above-ground living area in square feet.",
-    )
-
-    total_bsmt_sf: float = Field(
-        ge=0,
-        le=10_000,
-        description="Total basement area in square feet.",
-    )
-
-    garage_area: float = Field(
-        ge=0,
-        le=2_000,
-        description="Garage area in square feet.",
-    )
-
-    year_built: int = Field(
-        ge=1872,
-        le=2010,
-        description="Original construction year.",
-    )
-
-    overall_qual: int = Field(
-        ge=1,
-        le=10,
-        description="Overall material and finish quality, rated from 1 to 10.",
-    )
-
-    ms_zoning: str = Field(
-        min_length=1,
-        max_length=10,
-        description="General zoning classification.",
-    )
-
+    client_name: str = Field(..., min_length=2, max_length=120)
+    gr_liv_area: float = Field(..., gt=0, le=10000)
+    total_bsmt_sf: float = Field(..., ge=0, le=10000)
+    garage_area: float = Field(..., ge=0, le=2000)
+    year_built: int = Field(..., ge=1872, le=2010)
+    overall_qual: int = Field(..., ge=1, le=10)
+    ms_zoning: str = Field(..., min_length=1, max_length=10)
 
 class OrderUpdate(BaseModel):
-    """Request schema for updating an existing order."""
-
-    client_name: str | None = Field(
-        default=None,
-        min_length=2,
-        max_length=120,
-        description="Updated client name.",
-    )
-    gr_liv_area: float | None = Field(
-        default=None,
-        gt=0,
-        le=10_000,
-        description="Above-ground living area in square feet.",
-    )
-    total_bsmt_sf: float | None = Field(
-        default=None,
-        ge=0,
-        le=10_000,
-        description="Total basement area in square feet.",
-    )
-    garage_area: float | None = Field(
-        default=None,
-        ge=0,
-        le=2_000,
-        description="Garage area in square feet.",
-    )
-    year_built: int | None = Field(
-        default=None,
-        ge=1872,
-        le=2010,
-        description="Original construction year.",
-    )
-    overall_qual: int | None = Field(
-        default=None,
-        ge=1,
-        le=10,
-        description="Overall material and finish quality, rated from 1 to 10.",
-    )
-    ms_zoning: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=10,
-        description="General zoning classification.",
-    )
-
+    client_name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    gr_liv_area: Optional[float] = Field(default=None, gt=0, le=10000)
+    total_bsmt_sf: Optional[float] = Field(default=None, ge=0, le=10000)
+    garage_area: Optional[float] = Field(default=None, ge=0, le=2000)
+    year_built: Optional[int] = Field(default=None, ge=1872, le=2010)
+    overall_qual: Optional[int] = Field(default=None, ge=1, le=10)
+    ms_zoning: Optional[str] = Field(default=None, min_length=1, max_length=10)
 
 class OrderRead(BaseModel):
-    """Response schema representing an order."""
-
-    model_config = {"from_attributes": True}
-
     id: int
     client_name: str
-
     gr_liv_area: float
     total_bsmt_sf: float
     garage_area: float
     year_built: int
     overall_qual: int
     ms_zoning: str
+    predicted_price: Optional[float] = None
+    status: str
+    created_at: Optional[datetime] = None
 
-    predicted_price: float | None
-    created_at: datetime
+    model_config = {"from_attributes": True}
+
+class BatchOrderRequest(BaseModel):
+    orders: List[OrderCreate] = Field(..., min_length=1, max_length=BATCH_MAX_ITEMS)
+
+class BatchOrderItemResult(BaseModel):
+    index: int
+    order_id: int
+    status: Literal["priced", "failed"]
+    predicted_price: Optional[float] = None
+    error: Optional[str] = None
+
+class BatchOrderResponse(BaseModel):
+    total: int
+    results: List[BatchOrderItemResult]

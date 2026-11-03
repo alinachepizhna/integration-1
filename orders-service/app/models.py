@@ -11,7 +11,7 @@ class Order(Base):
 
     __tablename__ = "orders"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     client_name: Mapped[str] = mapped_column(
         String(120),
@@ -51,6 +51,13 @@ class Order(Base):
     predicted_price: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="pending",
+        server_default="pending",
     )
 
     created_at: Mapped[datetime] = mapped_column(
