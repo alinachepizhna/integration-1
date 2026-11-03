@@ -67,7 +67,6 @@ def _request_prediction(payload: dict) -> float:
     return float(response.json()["predicted_price"])
 
 
-
 @app.get("/health")
 def health() -> dict[str, str]:
     """Return the health status of the Orders API."""
@@ -153,6 +152,16 @@ def get_order(
     return order
 
 
+FEATURE_FIELDS = {
+    "gr_liv_area",
+    "total_bsmt_sf",
+    "garage_area",
+    "year_built",
+    "overall_qual",
+    "ms_zoning",
+}
+
+
 @app.patch(
     "/orders/{oid}",
     response_model=schemas.OrderRead,
@@ -162,7 +171,7 @@ def update_order(
     data: schemas.OrderUpdate,
     db: Session = Depends(get_db),
 ):
-    """Update an existing order."""
+    """Update an existing order and recalculate the prediction if housing features change."""
     order = crud.get_order(db, oid)
 
     if order is None:
@@ -171,11 +180,39 @@ def update_order(
             detail="Order not found.",
         )
 
-    return crud.update_order(
-        db,
-        order,
-        data,
-    )
+    update_data = data.model_dump(exclude_unset=True)
+
+    # Перевіряємо, чи змінювалися характеристики будинку
+    features_changed = bool(FEATURE_FIELDS.intersection(update_data.keys()))
+
+    # Оновлюємо атрибути об'єкта замовлення новими значеннями
+    for field, value in update_data.items():
+        setattr(order, field, value)
+
+    # Якщо характеристики будинку змінилися — запитуємо новий прогноз
+    if features_changed:
+        forecast_payload = {
+            "gr_liv_area": order.gr_liv_area,
+            "total_bsmt_sf": order.total_bsmt_sf,
+            "garage_area": order.garage_area,
+            "year_built": order.year_built,
+            "overall_qual": order.overall_qual,
+            "ms_zoning": order.ms_zoning,
+        }
+        try:
+            order.predicted_price = _request_prediction(forecast_payload)
+        except Exception as exc:
+            logger.error(
+                "Forecast service is unavailable during update: %s",
+                exc,
+            )
+            order.predicted_price = None
+
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    return order
 
 
 @app.delete(

@@ -47,11 +47,16 @@ def update_order(
     db: Session,
     order: models.Order,
     data: schemas.OrderUpdate,
+    predicted_price: float | None = None,
 ) -> models.Order:
-    """Update the provided fields of an existing order."""
+    """Update the provided fields of an existing order and optionally update predicted price."""
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(order, key, value)
 
+    if predicted_price is not None:
+        order.predicted_price = predicted_price
+
+    db.add(order)
     db.commit()
     db.refresh(order)
 

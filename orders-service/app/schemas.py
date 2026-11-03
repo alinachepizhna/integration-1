@@ -58,6 +58,42 @@ class OrderUpdate(BaseModel):
         max_length=120,
         description="Updated client name.",
     )
+    gr_liv_area: float | None = Field(
+        default=None,
+        gt=0,
+        le=10_000,
+        description="Above-ground living area in square feet.",
+    )
+    total_bsmt_sf: float | None = Field(
+        default=None,
+        ge=0,
+        le=10_000,
+        description="Total basement area in square feet.",
+    )
+    garage_area: float | None = Field(
+        default=None,
+        ge=0,
+        le=2_000,
+        description="Garage area in square feet.",
+    )
+    year_built: int | None = Field(
+        default=None,
+        ge=1872,
+        le=2010,
+        description="Original construction year.",
+    )
+    overall_qual: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description="Overall material and finish quality, rated from 1 to 10.",
+    )
+    ms_zoning: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=10,
+        description="General zoning classification.",
+    )
 
 
 class OrderRead(BaseModel):
